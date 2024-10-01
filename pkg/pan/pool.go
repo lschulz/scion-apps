@@ -81,7 +81,11 @@ func (p *pathPool) paths(ctx context.Context, dstIA IA) ([]*Path, error) {
 
 // queryPaths returns paths to dstIA. Unconditionally requests paths from sciond.
 func (p *pathPool) queryPaths(ctx context.Context, dstIA IA) ([]*Path, error) {
-	paths, err := host().queryPaths(ctx, dstIA)
+	host, err := getHost()
+	if err != nil {
+		return nil, err
+	}
+	paths, err := host.queryPaths(ctx, dstIA)
 	if err != nil {
 		return nil, err
 	}
