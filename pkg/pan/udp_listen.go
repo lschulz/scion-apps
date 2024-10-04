@@ -31,6 +31,7 @@ var errBadDstAddress error = errors.New("dst address not a UDPAddr")
 
 // ReplySelector controls the reply path in a **listening** socket. Stateful.
 type ReplySelector interface {
+	IdIntHandler
 	// Path selects the path for the next packet to remote.
 	// Invoked for each packet sent with WriteTo.
 	Path(ctx interface{}, remote UDPAddr) *Path
@@ -59,6 +60,7 @@ type ListenConn interface {
 	// WriteToVia writes a message to the remote address via the given path.
 	// This bypasses selector used for WriteTo.
 	WriteToVia(b []byte, dst UDPAddr, path *Path) (int, error)
+	WriteToViaIdInt(b []byte, dst UDPAddr, path *Path, idint *IdIntReq) (int, error)
 }
 
 func ListenUDP(ctx context.Context, local netip.AddrPort,
@@ -124,12 +126,20 @@ func (c *listenConn) ReadFrom(b []byte) (int, net.Addr, error) {
 }
 
 func (c *listenConn) ReadFromVia(b []byte) (int, UDPAddr, *Path, error) {
-	n, remote, fwPath, err := c.baseUDPConn.readMsg(b)
+	n, remote, fwPath, rawIdInt, err := c.baseUDPConn.readMsg(b)
 	if err != nil {
 		return n, UDPAddr{}, nil, err
 	}
 	path, err := reversePathFromForwardingPath(remote.IA, c.local.IA, fwPath)
 	c.selector.Record(remote, path)
+
+	if rawIdInt != nil {
+		fullPath, idint, err := tryVerifyIdInt(context.TODO(), rawIdInt, remote, path)
+		if err == nil {
+			c.selector.IdIntReceived(remote, fullPath, idint)
+		}
+	}
+
 	return n, remote, path, err
 }
 
@@ -143,17 +153,23 @@ func (c *listenConn) WriteToWithCtx(ctx interface{}, b []byte, dst net.Addr) (n 
 		return 0, errBadDstAddress
 	}
 	var path *Path
+	var idint *IdIntReq
 	if c.local.IA != sdst.IA {
 		path = c.selector.Path(ctx, sdst)
 		if path == nil {
 			return 0, errNoPathTo(sdst.IA)
 		}
+		idint = c.selector.IdIntRequest(ctx, sdst, path)
 	}
-	return c.WriteToVia(b, sdst, path)
+	return c.baseUDPConn.writeMsg(c.local, sdst, path, idint, b)
 }
 
 func (c *listenConn) WriteToVia(b []byte, dst UDPAddr, path *Path) (int, error) {
-	return c.baseUDPConn.writeMsg(c.local, dst, path, b)
+	return c.baseUDPConn.writeMsg(c.local, dst, path, nil, b)
+}
+
+func (c *listenConn) WriteToViaIdInt(b []byte, dst UDPAddr, path *Path, idint *IdIntReq) (int, error) {
+	return c.baseUDPConn.writeMsg(c.local, dst, path, idint, b)
 }
 
 func (c *listenConn) Close() error {
@@ -164,6 +180,7 @@ func (c *listenConn) Close() error {
 }
 
 type DefaultReplySelector struct {
+	DefaultIdIntHandler
 	mtx     sync.RWMutex
 	remotes map[UDPAddr]remoteEntry
 }

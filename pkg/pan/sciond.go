@@ -34,6 +34,7 @@ import (
 type hostContext struct {
 	ia            IA
 	sciond        daemon.Connector
+	drkeyProvider snet.KeyProvider
 	hostInLocalAS net.IP
 }
 
@@ -88,9 +89,23 @@ func initHostContext() (hostContext, error) {
 	if err != nil {
 		return hostContext{}, err
 	}
+	// Find the local IP addresses used to communicate with SCION infrastructure
+	// services.
+	// FIXME(lschulz): If a different local address is used in combination with
+	// ID-INT, DRKey requests are denied by the control service.
+	localIP, err := addrutil.ResolveLocal(hostInLocalAS)
+	ip, ok := netip.AddrFromSlice(localIP)
+	if err != nil || !ok {
+		return hostContext{}, fmt.Errorf("unable to resolve default local address %w", err)
+	}
 	return hostContext{
-		ia:            IA(localIA),
-		sciond:        sciondConn,
+		ia:     IA(localIA),
+		sciond: sciondConn,
+		drkeyProvider: &snet.KeyCache{
+			Sciond:  sciondConn,
+			DstIA:   addr.IA(localIA),
+			DstHost: ip,
+		},
 		hostInLocalAS: hostInLocalAS,
 	}, nil
 }

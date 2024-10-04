@@ -34,6 +34,7 @@ type Conn interface {
 	// WriteVia writes a message to the remote address via the given path.
 	// This bypasses the path policy and selector used for Write.
 	WriteVia(path *Path, b []byte) (int, error)
+	WriteViaIdInt(path *Path, idint *IdIntReq, b []byte) (int, error)
 	// ReadVia reads a message and returns the (return-)path via which the
 	// message was received.
 	ReadVia(b []byte) (int, *Path, error)
@@ -139,27 +140,41 @@ func (c *dialedConn) Write(b []byte) (int, error) {
 
 func (c *dialedConn) WriteWithCtx(ctx interface{}, b []byte) (int, error) {
 	var path *Path
+	var idint *IdIntReq
 	if c.local.IA != c.remote.IA {
 		path = c.selector.Path(ctx)
 		if path == nil {
 			return 0, errNoPathTo(c.remote.IA)
 		}
+		idint = c.selector.IdIntRequest(ctx, c.remote, path)
 	}
-	return c.baseUDPConn.writeMsg(c.local, c.remote, path, b)
+	return c.baseUDPConn.writeMsg(c.local, c.remote, path, idint, b)
 }
 
 func (c *dialedConn) WriteVia(path *Path, b []byte) (int, error) {
-	return c.baseUDPConn.writeMsg(c.local, c.remote, path, b)
+	return c.baseUDPConn.writeMsg(c.local, c.remote, path, nil, b)
+}
+
+func (c *dialedConn) WriteViaIdInt(path *Path, idint *IdIntReq, b []byte) (int, error) {
+	return c.baseUDPConn.writeMsg(c.local, c.remote, path, idint, b)
 }
 
 func (c *dialedConn) Read(b []byte) (int, error) {
 	for {
-		n, remote, _, err := c.baseUDPConn.readMsg(b)
+		n, remote, fwPath, rawIdInt, err := c.baseUDPConn.readMsg(b)
 		if err != nil {
 			return n, err
 		}
 		if remote != c.remote {
 			continue // connected! Ignore spurious packets from wrong source
+		}
+		if rawIdInt != nil {
+			if path, err := reversePathFromForwardingPath(c.remote.IA, c.local.IA, fwPath); err == nil {
+				fullPath, idint, err := tryVerifyIdInt(context.TODO(), rawIdInt, remote, path)
+				if err == nil {
+					c.selector.IdIntReceived(remote, fullPath, idint)
+				}
+			}
 		}
 		return n, err
 	}
@@ -167,7 +182,7 @@ func (c *dialedConn) Read(b []byte) (int, error) {
 
 func (c *dialedConn) ReadVia(b []byte) (int, *Path, error) {
 	for {
-		n, remote, fwPath, err := c.baseUDPConn.readMsg(b)
+		n, remote, fwPath, rawIdInt, err := c.baseUDPConn.readMsg(b)
 		if err != nil {
 			return n, nil, err
 		}
@@ -177,6 +192,12 @@ func (c *dialedConn) ReadVia(b []byte) (int, *Path, error) {
 		path, err := reversePathFromForwardingPath(c.remote.IA, c.local.IA, fwPath)
 		if err != nil {
 			continue // just drop the packet if there is something wrong with the path
+		}
+		if rawIdInt != nil {
+			fullPath, idint, err := tryVerifyIdInt(context.TODO(), rawIdInt, remote, path)
+			if err == nil {
+				c.selector.IdIntReceived(remote, fullPath, idint)
+			}
 		}
 		return n, path, nil
 	}

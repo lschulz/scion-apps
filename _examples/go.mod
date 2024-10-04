@@ -9,10 +9,12 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/netsec-ethz/scion-apps v0.5.0
 	github.com/quic-go/quic-go v0.43.1
+	github.com/scionproto/scion v0.11.1-0.20240610170620-50b971ca2d4b
 	google.golang.org/grpc v1.63.2
 )
 
 require (
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220209173558-ad29539cd2e9 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/britram/borat v0.0.0-20181011130314-f891bcfcfb9b // indirect
@@ -43,7 +45,6 @@ require (
 	github.com/prometheus/common v0.53.0 // indirect
 	github.com/prometheus/procfs v0.14.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/scionproto/scion v0.11.1-0.20240610170620-50b971ca2d4b // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/atomic v1.11.0 // indirect
@@ -60,6 +61,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240509183442-62759503f434 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	lukechampine.com/frand v1.4.2 // indirect
 	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
 	modernc.org/libc v1.50.5 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
@@ -70,3 +72,5 @@ require (
 )
 
 replace github.com/netsec-ethz/scion-apps => ../
+
+replace github.com/scionproto/scion => github.com/netsys-lab/scionproto-scion v0.0.0-20241004155440-d23ca92d8bea

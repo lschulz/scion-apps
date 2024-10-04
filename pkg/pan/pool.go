@@ -104,6 +104,31 @@ func (p *pathPool) cachedPaths(dst IA) []*Path {
 	return append([]*Path{}, p.entries[dst].paths...)
 }
 
+// Looks for a path with the given fingerprint and returns it.
+func (p *pathPool) findPath(ctx context.Context, dst IA, fp PathFingerprint) *Path {
+	p.entriesMutex.RLock()
+	path := findPath(p.entries[dst].paths, fp)
+	p.entriesMutex.RUnlock()
+
+	if path != nil {
+		return path
+	}
+	paths, err := p.queryPaths(ctx, dst)
+	if err != nil {
+		return nil
+	}
+	return findPath(paths, fp)
+}
+
+func findPath(paths []*Path, fp PathFingerprint) *Path {
+	for _, p := range paths {
+		if p.Fingerprint == fp {
+			return p
+		}
+	}
+	return nil
+}
+
 func (p *pathPool) entry(dstIA IA) (pathPoolDst, bool) {
 	p.entriesMutex.RLock()
 	defer p.entriesMutex.RUnlock()

@@ -41,6 +41,7 @@ bin/
 
 # vscode workspace
 *.code-workspace
+.vscode
 
 # IntelliJ IDEA workspace
 .idea/

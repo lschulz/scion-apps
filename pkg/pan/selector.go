@@ -29,6 +29,7 @@ import (
 
 // Selector controls the path used by a single **dialed** socket. Stateful.
 type Selector interface {
+	IdIntHandler
 	// Path selects the path for the next packet.
 	// Invoked for each packet sent with Write.
 	Path(ctx interface{}) *Path
@@ -55,6 +56,7 @@ type Selector interface {
 // switch to the first path (in the order defined by the policy) that is not
 // affected by down notifications.
 type DefaultSelector struct {
+	DefaultIdIntHandler
 	mutex   sync.Mutex
 	paths   []*Path
 	current int
@@ -120,6 +122,7 @@ func (s *DefaultSelector) Close() error {
 }
 
 type PingingSelector struct {
+	DefaultIdIntHandler
 	// Interval for pinging. Must be positive.
 	Interval time.Duration
 	// Timeout for the individual pings. Must be positive and less than Interval.

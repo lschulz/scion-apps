@@ -50,6 +50,7 @@ func selectorByName(name string) (pan.Selector, error) {
 }
 
 type roundRobinSelector struct {
+	pan.DefaultIdIntHandler
 	mutex   sync.Mutex
 	paths   []*pan.Path
 	current int
@@ -90,6 +91,7 @@ func (s *roundRobinSelector) Close() error {
 }
 
 type randomSelector struct {
+	pan.DefaultIdIntHandler
 	mutex sync.Mutex
 	paths []*pan.Path
 }
