@@ -86,3 +86,5 @@ require (
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
+
+replace github.com/scionproto/scion => github.com/lschulz/scion v0.11.1-0.20241123215440-de8fff43ab16
