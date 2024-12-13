@@ -35,6 +35,8 @@ type hostContext struct {
 	ia            IA
 	sciond        daemon.Connector
 	hostInLocalAS net.IP
+	dispPortFirst uint16
+	dispPortLast  uint16
 }
 
 const (
@@ -88,10 +90,16 @@ func initHostContext() (hostContext, error) {
 	if err != nil {
 		return hostContext{}, err
 	}
+	firstPort, lastPort, err := sciondConn.PortRange(ctx)
+	if err != nil {
+		return hostContext{}, err
+	}
 	return hostContext{
 		ia:            IA(localIA),
 		sciond:        sciondConn,
 		hostInLocalAS: hostInLocalAS,
+		dispPortFirst: firstPort,
+		dispPortLast:  lastPort,
 	}, nil
 }
 
